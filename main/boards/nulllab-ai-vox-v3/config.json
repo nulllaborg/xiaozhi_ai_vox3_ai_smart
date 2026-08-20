@@ -4,7 +4,7 @@
   "builds": [
     {
       "name": "nulllab-ai-vox-v3",
-      "sdkconfig_append": ["CONFIG_ESP_CONSOLE_NONE=y"]
+      "sdkconfig_append": [ "CONFIG_CUSTOM_SSID_PREFIX=\"AI-VOX\"", "CONFIG_USE_DEVICE_AEC=y", "CONFIG_ESP_CONSOLE_NONE=y" ]
     }
   ]
 }

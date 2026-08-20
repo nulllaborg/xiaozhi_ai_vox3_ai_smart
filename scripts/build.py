@@ -54,8 +54,41 @@ def get_project_version() -> Optional[str]:
     return None
 
 
+def _idf_python() -> str:
+    """Return the Python interpreter to run idf.py with.
+
+    On Windows, idf.py must run under the ESP-IDF virtual environment Python
+    (the system/conda Python lacks the idf dependencies, and CreateProcess
+    cannot execute a .py script directly). Prefer the venv Python resolved
+    from IDF_PYTHON_ENV_PATH, falling back to the current interpreter.
+    """
+    env_path = os.environ.get("IDF_PYTHON_ENV_PATH")
+    if env_path:
+        if sys.platform == "win32":
+            candidate = os.path.join(env_path, "Scripts", "python.exe")
+        else:
+            candidate = os.path.join(env_path, "bin", "python")
+        if os.path.isfile(candidate):
+            return candidate
+    return sys.executable
+
+
+def _idf_script() -> str:
+    """Return the path to the ESP-IDF idf.py script.
+
+    Prefer IDF_PATH/tools/idf.py when IDF_PATH is set (guaranteed after
+    sourcing export.sh/export.bat); otherwise fall back to relying on PATH.
+    """
+    idf_path = os.environ.get("IDF_PATH")
+    if idf_path:
+        candidate = os.path.join(idf_path, "tools", "idf.py")
+        if os.path.isfile(candidate):
+            return candidate
+    return "idf.py"
+
+
 def _run_idf(*args: str, preview: bool = False) -> None:
-    command = ["idf.py"]
+    command = [_idf_python(), _idf_script()]
     if preview:
         command.append("--preview")
     command.extend(args)
@@ -727,7 +760,7 @@ def _detect_idf_version() -> tuple[int, int, int]:
 
     try:
         output = subprocess.run(
-            ["idf.py", "--version"],
+            [_idf_python(), _idf_script(), "--version"],
             check=True,
             capture_output=True,
             text=True,

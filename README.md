@@ -8,13 +8,15 @@
 
 **NULLLAB修改记录：**
 
-- 增加可自定义热点名称的选项 `CONFIG_CUSTOM_SSID_PREFIX="AI-VOX"`
+- 增加可自定义热点名称的选项 `CONFIG_CUSTOM_SSID_PREFIX="AI-VOX"`（修改位置：开发板 `main/boards/nulllab-ai-vox-v3/config.json` 的 `sdkconfig_append`，或 `idf.py menuconfig` → `WiFi Configuration Method` → `Custom SSID Prefix`）
 - 增加 NULLLAB AI-VOX3 开发板
-  - NULLLAB AI-VOX3 支持实时打断，可以随时打断小智说话，默认开启 `CONFIG_USE_DEVICE_AEC=y`
-  - NULLLAB AI-VOX3 支持双网络，默认使用 WIFI 网络，在开机后长按 BOOT 键可以切换到 4G 网络。要修改默认网络，打开 `config.h` 文件，修改 `#define DEFAULT_4G_NETWORK 1`。
+  - NULLLAB AI-VOX3 支持实时打断，可以随时打断小智说话，默认开启 `CONFIG_USE_DEVICE_AEC=y`（修改位置：开发板 `config.json` 的 `sdkconfig_append`）
+  - NULLLAB AI-VOX3 支持双网络，默认使用 WIFI 网络，在开机后长按 BOOT 键可以切换到 4G 网络。要修改默认网络，打开开发板 `config.h` 文件，修改 `#define DEFAULT_4G_NETWORK`（`0` = WIFI 默认，`1` = 4G 默认）。
+  - NULLLAB AI-VOX3可以使用PH2.0接口链接其他开发板，控制外设
 - 编译配置通过 idf.py menuconfig 进行设置或在开发板的 config.json 中设置（推荐）
+  
 
-**官方推荐使用编译脚本进行编译：`python ./scripts/release.py nulllab-AI-VOX3`，省去切换开发板配置。**
+**官方推荐使用编译脚本进行编译：`python ./scripts/build.py nulllab-ai-vox-v3`，省去切换开发板配置。**
 案例所需要的配置都写在了 config.json 文件中，编译脚本可以自动完成配置。
 
 ---

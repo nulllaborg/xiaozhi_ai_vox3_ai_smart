@@ -977,6 +977,12 @@ menu "WiFi Configuration Method"
         default y
         help
             Use WiFi Hotspot to transmit WiFi configuration data
+    config CUSTOM_SSID_PREFIX
+        string "Custom SSID Prefix"
+        default "Xiaozhi"
+        help
+            Prefix for the WiFi configuration hotspot SSID name.
+            The final SSID is "<prefix>-<last 2 bytes of the MAC address>".
     config USE_ESP_BLUFI_WIFI_PROVISIONING
         bool "ESP-BluFi"
         select BT_ENABLED

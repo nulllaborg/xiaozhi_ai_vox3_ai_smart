@@ -1,6 +1,7 @@
 #include <driver/rtc_io.h>
 #include <driver/uart.h>
 #include <esp_lcd_panel_vendor.h>
+#include <esp_timer.h>
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <wifi_station.h>
@@ -198,6 +199,82 @@ private:
                                }
                                ESP_LOGI(TAG, "Failed to send UART data: %s", data.c_str());
                                return false;
+                           });
+
+        mcp_server.AddTool("self.uart.query",
+                           "Send a command to the external device via UART serial port, then wait for and return the device's reply.\n"
+                           "Use this tool to READ sensor values or query status from the external Arduino. The Arduino replies with plain text.\n"
+                           "Examples of commands the Arduino understands:\n"
+                           "- 'read temperature' -> replies like 'Temperature: 25.50 C'\n"
+                           "- 'read humidity' -> replies like 'Humidity: 65.00 %'\n"
+                           "- 'read light' / 'read rain' / 'read gas' -> replies with an integer value\n",
+                           PropertyList({Property("data", kPropertyTypeString)}),
+                           [](const PropertyList &properties) -> ReturnValue
+                           {
+                               std::string data = properties["data"].value<std::string>();
+                               if (!data.empty() && data.back() != '\n')
+                               {
+                                   data += "\n";
+                               }
+
+                               // 清空上次遗留的数据，避免读到旧的回复
+                               uart_flush_input(UART_NUM_2);
+
+                               if (uart_write_bytes(UART_NUM_2, data.c_str(), data.length()) != data.length())
+                               {
+                                   ESP_LOGE(TAG, "Failed to send UART query: %s", data.c_str());
+                                   return std::string("ERROR: uart send failed");
+                               }
+
+                               // 等待 Arduino 回复：累计读取，直到 200ms 内无新数据（最长等 3 秒）
+                               std::string reply;
+                               char buf[128];
+                               const int64_t kSilenceUs = 200 * 1000;       // 200ms 静默即认为回复结束
+                               const int64_t kMaxWaitUs = 1500 * 1000;      // 兜底上限 1.5 秒
+                               int64_t last_data_us = esp_timer_get_time();
+                               const int64_t start_us = last_data_us;
+                               while ((esp_timer_get_time() - last_data_us) < kSilenceUs &&
+                                      (esp_timer_get_time() - start_us) < kMaxWaitUs)
+                               {
+                                   int len = uart_read_bytes(UART_NUM_2, buf, sizeof(buf) - 1, pdMS_TO_TICKS(50));
+                                   if (len > 0)
+                                   {
+                                       buf[len] = '\0';
+                                       reply += buf;
+                                       last_data_us = esp_timer_get_time();
+                                   }
+                               }
+
+                               // 去掉 Arduino 的回显行（Received: ...）和调试行（[DBG] ...），只保留有效内容
+                               std::string cleaned;
+                               size_t pos = 0;
+                               while (pos <= reply.size())
+                               {
+                                   size_t eol = reply.find('\n', pos);
+                                   if (eol == std::string::npos)
+                                       eol = reply.size();
+                                   std::string line = reply.substr(pos, eol - pos);
+                                   pos = eol + 1;
+
+                                   // 去掉行首行尾空白
+                                   size_t b = line.find_first_not_of(" \t\r");
+                                   size_t e = line.find_last_not_of(" \t\r");
+                                   if (b == std::string::npos)
+                                       continue; // 空行跳过
+                                   line = line.substr(b, e - b + 1);
+
+                                   if (line.rfind("Received:", 0) == 0)
+                                       continue; // 回显行跳过
+                                   if (line.rfind("[DBG]", 0) == 0)
+                                       continue; // 调试行跳过
+                                   if (!cleaned.empty())
+                                       cleaned += "\n";
+                                   cleaned += line;
+                               }
+
+                               if (cleaned.empty())
+                                   return std::string("NO_REPLY");
+                               return cleaned;
                            });
     }
 
