@@ -16,7 +16,6 @@
 #include "mcp_server.h"
 
 #include "ai_vox3_audio_codec.h"
-#include "power_manager.h"
 
 #define TAG "AIVOX3"
 
@@ -25,13 +24,8 @@ private:
     Button boot_button_;
     Button volume_up_button_;
     Button volume_down_button_;
-    PowerManager* power_manager_;
     i2c_master_bus_handle_t codec_i2c_bus_;
     LcdDisplay* display_;
-
-    void InitializePowerManager() {
-        power_manager_ = new PowerManager(BATTERY_LEVEL_PIN, BATTERY_CHARGING_PIN);
-    }
 
     void InitializeI2c() {
         i2c_master_bus_config_t i2c_bus_cfg = {
@@ -287,7 +281,6 @@ public:
         InitializeI2c();
         InitializeSpi();
         InitializeLcdDisplay();
-        InitializePowerManager();
         InitializeButtons();
         InitializeTools();
         GetBacklight()->RestoreBrightness();
@@ -313,12 +306,6 @@ public:
         return &backlight;
     }
 
-    virtual bool GetBatteryLevel(int& level, bool& charging, bool& discharging) override {
-        charging = power_manager_->IsCharging();
-        discharging = power_manager_->IsDischarging();
-        level = power_manager_->GetBatteryLevel();
-        return true;
-    }
 };
 
 DECLARE_BOARD(AIVOX3);
